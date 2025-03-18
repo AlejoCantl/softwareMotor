@@ -4,29 +4,33 @@
  */
 package softwaremotor;
 
+import SerialCommunication.ConnectionSerial;
 import java.awt.HeadlessException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Arrays;
 import javax.swing.JOptionPane;
+import jssc.SerialPortEvent;
+import jssc.SerialPortEventListener;
 
 /**
  *
  * @author junio
  */
 public class Home extends javax.swing.JFrame {
-
+    ConnectionSerial con = new ConnectionSerial();
+    String message = "";
     /**
      * Creates new form Home
      */
     public Home() {
         initComponents();
         this.setLocationRelativeTo(null); // Centra la ventana en la pantalla
-
+        con.Connect("COM3", 115200, listener);
+        
     }
-
+    
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always
@@ -182,7 +186,7 @@ public class Home extends javax.swing.JFrame {
                     .addComponent(jButton2, javax.swing.GroupLayout.PREFERRED_SIZE, 38, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jButton3, javax.swing.GroupLayout.PREFERRED_SIZE, 39, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jButton1, javax.swing.GroupLayout.PREFERRED_SIZE, 38, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 181, Short.MAX_VALUE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 166, Short.MAX_VALUE)
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jButton4)
                     .addComponent(jButton5))
@@ -205,8 +209,9 @@ public class Home extends javax.swing.JFrame {
 
     private void jButton5ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton5ActionPerformed
         // TODO add your handling code here:
+        con.Disconnect();
         System.exit(0);
-
+        
     }//GEN-LAST:event_jButton5ActionPerformed
 
     private void jButton4ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton4ActionPerformed
@@ -228,6 +233,7 @@ public class Home extends javax.swing.JFrame {
                         if (rs.next()) {
                             int accion = rs.getInt("accion");
                             if (accion == 1) {
+                                con.Send("MOTOR_OFF");
                                 try (PreparedStatement stmt = conn.prepareStatement(query)) {
                                     stmt.setInt(1, accionA);
                                     stmt.setString(2, dispositivo);
@@ -241,6 +247,7 @@ public class Home extends javax.swing.JFrame {
                                 }
                                 conn.close();
                             } else {
+                                con.Send("MOTOR_IZQUIERDA");
                                 try (PreparedStatement stmt = conn.prepareStatement(query)) {
                                     stmt.setInt(1, accionE);
                                     stmt.setString(2, dispositivo);
@@ -292,6 +299,7 @@ public class Home extends javax.swing.JFrame {
                         if (rs.next()) {
                             int accion = rs.getInt("accion");
                             if (accion == 2) {
+                                con.Send("MOTOR_OFF");
                                 try (PreparedStatement stmt = conn.prepareStatement(query)) {
                                     stmt.setInt(1, accionA);
                                     stmt.setString(2, dispositivo);
@@ -305,6 +313,7 @@ public class Home extends javax.swing.JFrame {
                                 }
                                 conn.close();
                             } else {
+                                con.Send("MOTOR_DERECHA");
                                 try (PreparedStatement stmt = conn.prepareStatement(query)) {
                                     stmt.setInt(1, accionE);
                                     stmt.setString(2, dispositivo);
@@ -345,6 +354,7 @@ public class Home extends javax.swing.JFrame {
         Integer accionE = 4;
         Integer accionA = 3;
         String dispositivo = "Led";
+        con.Send("TOGGLE_LED");
         try {
             Connection conn = DatabaseConnection.connect();
             if (conn != null) {
@@ -442,6 +452,72 @@ public class Home extends javax.swing.JFrame {
             }
         });
     }
+    
+    public static void ExecuteQuery(Integer accion, String dispositivo){
+        try (Connection conn = DatabaseConnection.connect()) {
+            if (conn != null) {
+                String query = "INSERT INTO record(accion, dispositivo) VALUES(?, ?)";
+                try (PreparedStatement stmt = conn.prepareStatement(query)) {
+                    stmt.setInt(1, accion);
+                    stmt.setString(2, dispositivo);
+                    int resultado = stmt.executeUpdate();
+                    if (resultado > 0) {
+                        if("Led".equals(dispositivo)){
+                           switch(accion){
+                               case 4:
+                                   System.out.println("Led encendido");
+                                   break;
+                               case 3:
+                                   System.out.println("Led apagado");
+                                   break;
+                           }
+                        }else{
+                            switch(accion){
+                                case 2:
+                                    System.out.println("Motor encendido hacia la derecha");
+                                    break;
+                                case 3:
+                                    System.out.println("Motor apagado");
+                                    break;
+                                case 1:
+                                     System.out.println("Motor encendido hacia la izquierda");
+                                     break;
+                            }   
+                        }
+                        System.out.println("Registro guardado en la base de datos: ");
+                    } else {
+                        System.out.println("No se insertó ningun dato.");
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error al registrar en la base de datos: " + e.getMessage());
+        }
+    }
+    
+    public final SerialPortEventListener listener = new SerialPortEventListener() {
+        @Override
+        public void serialEvent(SerialPortEvent spe) {
+               message= con.Read().trim().toUpperCase();
+               System.out.println(message);
+               if(message.equals("IZQUIERDA")){
+               ExecuteQuery(1, "Motor");
+               }
+               if(message.equals("DERECHA")){
+               ExecuteQuery(2, "Motor");
+               }
+               if(message.equals("MOTOR APAGADO")){
+               ExecuteQuery(3, "Motor");
+               }
+               if(message.equals("LEDS ENCENDIDOS")){
+               ExecuteQuery(4, "Led");
+               }
+               if(message.equals("LEDS APAGADOS")){
+               ExecuteQuery(3, "Led");
+               }
+        }
+    };
+    
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton jButton1;

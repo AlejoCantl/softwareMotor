@@ -171,7 +171,7 @@ public class Registros extends javax.swing.JFrame {
         try {
             Connection conn = DatabaseConnection.connect();
             if (conn != null) {
-                String query = "SELECT r.created_at, r.dispositivo, a.accion FROM record AS r INNER JOIN accion AS a ON r.accion = a.id ORDER BY r.id ASC ";
+                String query = "SELECT r.created_at, r.dispositivo, a.accion FROM record AS r INNER JOIN accion AS a ON r.accion = a.id ORDER BY r.id DESC ";
                 try (PreparedStatement stmt = conn.prepareStatement(query)) {
                     try (ResultSet rs = stmt.executeQuery()) {
                         while (rs.next()) {  // Iteramos sobre todos los registros
